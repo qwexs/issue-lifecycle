@@ -1,0 +1,11 @@
+{
+  "_comment": "Optional config. All fields have sensible defaults. Copy to config.json next to SKILL.md (gitignored).",
+
+  "collectionName": "Issues",
+  "outlineSkillPath": "~/.agents/skills/outline-skill/scripts",
+
+  "_defaults": {
+    "defaultStatus": "ready-for-agent",
+    "tableFields": ["ID", "Project", "Status", "Labels", "Created", "Source remote"]
+  }
+}

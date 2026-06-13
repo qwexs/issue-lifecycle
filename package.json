@@ -1,0 +1,36 @@
+{
+  "name": "issue-lifecycle",
+  "type": "module",
+  "version": "0.1.0",
+  "description": "Manage issues through their full lifecycle on the Outline Wiki tracker — create from a brief, update status, append progress notes, link to artifacts, close with outcome.",
+  "private": true,
+  "bin": {
+    "il-new": "scripts/new-issue.js",
+    "il-read": "scripts/read-issue.js",
+    "il-list": "scripts/list-issues.js",
+    "il-status": "scripts/set-status.js",
+    "il-log": "scripts/log-progress.js",
+    "il-close": "scripts/close-issue.js"
+  },
+  "keywords": [
+    "outline",
+    "wiki",
+    "issue-tracker",
+    "agent-skill",
+    "lifecycle"
+  ],
+  "author": "qwexs",
+  "license": "MIT",
+  "dependencies": {},
+  "peerDependencies": {
+    "outline-skill": "^0.1.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/qwexs/issue-lifecycle.git"
+  },
+  "bugs": {
+    "url": "https://github.com/qwexs/issue-lifecycle/issues"
+  },
+  "homepage": "https://github.com/qwexs/issue-lifecycle#readme"
+}

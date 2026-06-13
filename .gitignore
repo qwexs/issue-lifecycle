@@ -1,0 +1,15 @@
+# User config — may contain local paths / collection names.
+config.json
+
+# Node
+node_modules/
+
+# Bun
+bun.lockb
+
+# OS / editor cruft
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.log
