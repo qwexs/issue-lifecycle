@@ -13,6 +13,22 @@ const SCRIPTS = expandPath(
   || '~/.agents/skills/outline-skill/scripts'
 );
 
+// The `outline` skill's scripts parse flags as separate argv entries
+// (`--collection <id>`), not the modern `--collection=<id>` form. We use the
+// modern form everywhere in this skill, so normalize before spawning.
+function normalizeArgs(args) {
+  const out = [];
+  for (const arg of args) {
+    if (arg.startsWith('--') && arg.includes('=')) {
+      const eq = arg.indexOf('=');
+      out.push(arg.slice(0, eq), arg.slice(eq + 1));
+    } else {
+      out.push(arg);
+    }
+  }
+  return out;
+}
+
 /**
  * Run an outline skill script and parse its --json output.
  * Throws on non-zero exit or invalid JSON.
@@ -25,9 +41,14 @@ export async function run(script, args = []) {
       `Set OUTLINE_SKILL_PATH or config.outlineSkillPath.`
     );
   }
-  const stdout = await exec([scriptPath, ...args, '--json']);
+  const stdout = await exec([scriptPath, ...normalizeArgs(args), '--json']);
   try {
-    return JSON.parse(stdout);
+    const parsed = JSON.parse(stdout);
+    // The `outline` skill's scripts are inconsistent: most serialize the full
+    // response (`{ data: ..., policies: ... }`), but `tree.js` serializes only
+    // `res.data` (a bare array). Normalize to a uniform `{ data }` shape so
+    // callers can always use `res.data`.
+    return Array.isArray(parsed) ? { data: parsed } : parsed;
   } catch (e) {
     throw new Error(`${script} did not return valid JSON: ${stdout.slice(0, 200)}`);
   }
@@ -44,7 +65,7 @@ export async function runText(script, args = []) {
       `Set OUTLINE_SKILL_PATH or config.outlineSkillPath.`
     );
   }
-  return await exec([scriptPath, ...args]);
+  return await exec([scriptPath, ...normalizeArgs(args)]);
 }
 
 function exec(cmd) {
