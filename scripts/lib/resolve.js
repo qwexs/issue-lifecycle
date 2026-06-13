@@ -39,18 +39,41 @@ export async function findProjectId(collectionId, projectName) {
 }
 
 /**
- * Find an issue document by `ISS-<n>` short id (just the number, e.g. 13).
- * Resolves under a project document, matching the `ISS-<n>: <title>` pattern.
- * Returns the full document or null.
+ * Find an issue document by short path, e.g. "13", "2.A", "2.A.1".
+ * Resolves top-level (project → ISS-N) via `tree.js`, then any sub-levels
+ * via `list.js --parent=<id>`. Returns the full document or null.
  */
-export async function findIssueByShortId(projectId, n) {
-  const tree = await run('tree.js', [`--collection=${await collectionIdFromProject(projectId)}`]);
+export async function findIssueByPath(projectId, collectionId, path) {
+  const parts = String(path).split('.').filter(Boolean);
+  if (parts.length === 0) return null;
+
+  // First segment lives one level under the project doc — use tree.js.
+  const tree = await run('tree.js', [`--collection=${collectionId}`]);
   const project = (tree.data || []).find((n) => n.id === projectId);
   if (!project) throw new Error(`Project doc ${projectId} disappeared mid-flight`);
-  const children = project.children || [];
-  const target = String(n).padStart(1, '0');
-  const match = children.find((c) => c.title.startsWith(`ISS-${target}:`));
-  return match || null;
+  let current = (project.children || []).find((c) => c.title.startsWith(`ISS-${parts[0]}:`));
+  if (!current) return null;
+
+  // Subsequent segments live deeper — use list.js for each step.
+  for (let i = 1; i < parts.length; i++) {
+    if (!current) return null;
+    const list = await run('list.js', [`--parent=${current.id}`]);
+    const docs = list.data || [];
+    // `prefix` already ends with ':' — only prepend `ISS-`.
+    const prefix = parts.slice(0, i + 1).join('.') + ':';
+    current = docs.find((c) => c.title.startsWith(`ISS-${prefix}`));
+  }
+  return current || null;
+}
+
+/**
+ * Backwards-compatible shortcut: resolve an issue by its top-level number.
+ * Callers that already have a `collectionId` should call `findIssueByPath`
+ * directly to avoid the extra collection-walk.
+ */
+export async function findIssueByShortId(projectId, n) {
+  const collectionId = await collectionIdFromProject(projectId);
+  return findIssueByPath(projectId, collectionId, String(n));
 }
 
 /**

@@ -3,7 +3,7 @@
 // Prints title, status, labels, URL, and the full body.
 
 import { run } from './lib/outline-cli.js';
-import { findCollectionId, findProjectId, findIssueByShortId, readDocument } from './lib/resolve.js';
+import { findCollectionId, findProjectId, findIssueByPath, readDocument } from './lib/resolve.js';
 import { parseTable } from './lib/table-parser.js';
 
 const args = process.argv.slice(2);
@@ -36,10 +36,11 @@ try {
     }
     const collectionId = await findCollectionId(get('--collection') || undefined);
     const projectId = await findProjectId(collectionId, project);
-    const n = parseInt(issue, 10);
-    const issueDoc = await findIssueByShortId(projectId, n);
+    // Accept both "13" and "2.A" / "2.A.1" — the path is split and resolved
+    // top-level via tree.js, then recursively via list.js for sub-issues.
+    const issueDoc = await findIssueByPath(projectId, collectionId, issue);
     if (!issueDoc) {
-      console.error(`❌ ISS-${n} not found in project "${project}"`);
+      console.error(`❌ ISS-${issue} not found in project "${project}"`);
       process.exit(2);
     }
     document = await readDocument(issueDoc.id);

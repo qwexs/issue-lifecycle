@@ -9,7 +9,7 @@
 // - bullet list of follow-ups (anything that escaped this session)
 
 import { run } from './lib/outline-cli.js';
-import { findCollectionId, findProjectId, findIssueByShortId } from './lib/resolve.js';
+import { findCollectionId, findProjectId, findIssueByPath } from './lib/resolve.js';
 import { appendToNotes, parseTable, updateField } from './lib/table-parser.js';
 import { TRIAGE_LABELS } from './lib/issue-template.js';
 
@@ -60,10 +60,9 @@ if (status === 'wontfix' || status === 'ready-for-human') {
 try {
   const collectionId = await findCollectionId(get('--collection') || undefined);
   const projectId = await findProjectId(collectionId, project);
-  const n = parseInt(issue, 10);
-  const issueDoc = await findIssueByShortId(projectId, n);
+  const issueDoc = await findIssueByPath(projectId, collectionId, issue);
   if (!issueDoc) {
-    console.error(`❌ ISS-${n} not found in project "${project}"`);
+    console.error(`❌ ISS-${issue} not found in project "${project}"`);
     process.exit(2);
   }
 

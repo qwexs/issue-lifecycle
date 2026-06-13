@@ -6,7 +6,7 @@
 //   - outcome:  same shape as progress but uses the close heading prefix
 
 import { run } from './lib/outline-cli.js';
-import { findCollectionId, findProjectId, findIssueByShortId } from './lib/resolve.js';
+import { findCollectionId, findProjectId, findIssueByPath } from './lib/resolve.js';
 import { appendToNotes } from './lib/table-parser.js';
 
 const VALID_TYPES = new Set(['progress', 'link', 'outcome']);
@@ -50,10 +50,9 @@ if (target && !VALID_TARGETS.has(target)) {
 try {
   const collectionId = await findCollectionId(get('--collection') || undefined);
   const projectId = await findProjectId(collectionId, project);
-  const n = parseInt(issue, 10);
-  const issueDoc = await findIssueByShortId(projectId, n);
+  const issueDoc = await findIssueByPath(projectId, collectionId, issue);
   if (!issueDoc) {
-    console.error(`❌ ISS-${n} not found in project "${project}"`);
+    console.error(`❌ ISS-${issue} not found in project "${project}"`);
     process.exit(2);
   }
 
