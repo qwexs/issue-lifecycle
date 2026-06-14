@@ -6,6 +6,7 @@
 
   "_defaults": {
     "defaultStatus": "ready-for-agent",
-    "tableFields": ["ID", "Project", "Status", "Labels", "Created", "Source remote"]
+    "tableFields": ["ID", "Project", "Status", "Labels", "Created", "Source remote"],
+    "_tableFieldsDoc": "Standard metadata table fields. The `Spec` row is rendered only when --spec mode is used and is NOT part of this list — it is appended dynamically by buildBody()."
   }
 }

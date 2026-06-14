@@ -17,16 +17,24 @@ const TRIAGE_LABELS = new Set([
   'done',
 ]);
 
+// `Spec` is an optional metadata field. It is rendered as an extra row
+// in the metadata table when `input.specUrl` is set (i.e. when the issue
+// lives under a spec doc via `--spec` mode). It carries a markdown link
+// to the parent spec so readers of the issue can jump back to context.
+const OPTIONAL_FIELDS = ['Spec'];
+
 /**
  * Build the full markdown body of an issue page.
  *
  * @param {object} input
  * @param {string} input.id              - "ISS-13"
- * @param {string} input.project         - "fsk-shop"
+ * @param {string} input.project         - "fsk-shop" (legacy) or spec title (spec mode)
  * @param {string} input.status          - "ready-for-agent" (or "needs-triage" default)
  * @param {string[]} [input.labels]      - ["phase", "loyalty"]
  * @param {string} input.created         - "2026-06-13"
  * @param {string} [input.sourceRemote]  - git url
+ * @param {string} [input.specUrl]       - markdown link to the parent spec doc, e.g.
+ *                                         "[VPN Infra](https://outline.apriori.tech/doc/...)"
  * @param {string} input.title           - "Phase 16 — refund_reversal"
  * @param {string} [input.context]       - markdown body for ## Context
  * @param {string[]} [input.acceptance]  - list of criteria (rendered as checkboxes)
@@ -43,9 +51,15 @@ export function buildBody(input) {
     'Source remote': input.sourceRemote || '',
   };
 
-  // Render as the canonical 2-column table defined in
-  // `docs/agents/issue-tracker.md`. One row per field.
-  const table = renderTable2Col(FIELDS, fieldValues);
+  // Render the canonical 2-column table. Always include the standard fields;
+  // append the optional `Spec` row when the caller passed a spec link.
+  const fields = [...FIELDS];
+  if (input.specUrl) {
+    fieldValues.Spec = input.specUrl;
+    fields.push('Spec');
+  }
+
+  const table = renderTable2Col(fields, fieldValues);
   const acceptance = (input.acceptance || [])
     .map((line) => `- [ ] ${line}`)
     .join('\n');
@@ -87,4 +101,4 @@ function renderTable2Col(fields, values) {
   return lines.join('\n');
 }
 
-export { TRIAGE_LABELS };
+export { TRIAGE_LABELS, OPTIONAL_FIELDS };

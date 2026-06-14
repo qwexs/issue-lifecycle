@@ -1,0 +1,27 @@
+{
+  "_doc": "Status + label map for the 21 numbered issues in the VPN Infrastructure Specification. Consumed by examples/migrate-spec-issues.js via --map <path>. `n` must match the `### N.` heading in the parent spec; `title` is read from the spec itself at parse time. Edit freely; the migration script is idempotent on rerun if you add --if-not-exists, but currently it is one-shot.",
+
+  "issues": [
+    { "n": 1,  "status": "done",            "labels": ["dns", "geoblock", "ios"] },
+    { "n": 2,  "status": "done",            "labels": ["iptables", "docker", "quic"] },
+    { "n": 3,  "status": "done",            "labels": ["mtu", "wireguard", "tcp"] },
+    { "n": 4,  "status": "done",            "labels": ["vds-nl", "iptables", "nat"] },
+    { "n": 5,  "status": "done",            "labels": ["docker", "iptables", "forward"] },
+    { "n": 6,  "status": "done",            "labels": ["vk", "dns", "auth"] },
+    { "n": 7,  "status": "done",            "labels": ["vk", "iptables", "persist"] },
+    { "n": 8,  "status": "done",            "labels": ["instagram", "geoblock", "zapret"] },
+    { "n": 9,  "status": "done",            "labels": ["telegram", "zapret", "cleanup"] },
+    { "n": 10, "status": "done",            "labels": ["geoblock", "persist", "restart", "iptables"] },
+    { "n": 11, "status": "done",            "labels": ["warp", "xray", "vk"] },
+    { "n": 12, "status": "done",            "labels": ["vk", "experiment", "rollback", "yandex-cloud"] },
+    { "n": 13, "status": "done",            "labels": ["telegram", "mtu", "routes"] },
+    { "n": 14, "status": "done",            "labels": ["restart", "dns", "persist", "systemd"] },
+    { "n": 15, "status": "done",            "labels": ["dns", "geoblock", "manus"] },
+    { "n": 16, "status": "done",            "labels": ["dns", "geoblock", "openai"] },
+    { "n": 17, "status": "done",            "labels": ["instagram", "mangle", "quic", "nl"] },
+    { "n": 18, "status": "done",            "labels": ["instagram", "zapret", "cleanup"] },
+    { "n": 19, "status": "ready-for-agent", "labels": ["mobile", "ipv6", "openai", "claude", "unresolved"] },
+    { "n": 20, "status": "ready-for-human", "labels": ["vk", "max", "detection", "experiment"] },
+    { "n": 21, "status": "done",            "labels": ["vk", "max", "rollback"] }
+  ]
+}

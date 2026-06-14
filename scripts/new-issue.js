@@ -1,11 +1,23 @@
 #!/usr/bin/env node
-// Create a new issue page in the Outline tracker.
-// Resolves the collection + project, picks the next ISS-<n>, renders the
-// issue body from the standard template, and publishes it under the project
-// document. Returns the new page URL.
+// Create a new issue page.
+//
+// Two parent modes are supported (mutually exclusive):
+//
+//   --project <name>     Legacy "collection → project → ISS-<n>" mode.
+//                        Project doc lives inside a collection; we resolve
+//                        it via `tree.js --collection=<id>`. Issue becomes
+//                        a child of the project doc.
+//
+//   --spec <docId>       Spec-rooted mode. The parent is an arbitrary Outline
+//                        document (typically a SPEC / Architecture page) in
+//                        any collection. Issue becomes a direct child of the
+//                        spec doc. No collection-walk needed.
+//
+// In spec mode, the issue's `Project` row is set to the spec's title and an
+// extra `Spec` row is appended (markdown link to the spec) for context.
 
 import { run } from './lib/outline-cli.js';
-import { findCollectionId, findProjectId, nextIssueNumber } from './lib/resolve.js';
+import { resolveContext } from './lib/resolve.js';
 import { buildBody, TRIAGE_LABELS } from './lib/issue-template.js';
 
 const args = process.argv.slice(2);
@@ -18,9 +30,15 @@ if (has('--help')) {
 }
 
 const project = get('--project');
+const spec = get('--spec');
 const title = get('--title');
-if (!project || !title) {
-  console.error('Error: --project and --title are required.');
+if (!title) {
+  console.error('Error: --title is required.');
+  printHelp();
+  process.exit(1);
+}
+if (!project && !spec) {
+  console.error('Error: either --project <name> or --spec <docId> is required.');
   printHelp();
   process.exit(1);
 }
@@ -32,28 +50,34 @@ if (!TRIAGE_LABELS.has(status)) {
   process.exit(1);
 }
 
-const shortTitle = title.includes(':') ? title.split(':').slice(1).join(':').trim() : title;
+const shortTitle = title;
 const labels = parseList(get('--label'));
 const acceptance = parseList(get('--acceptance'));
 const context = get('--context') || '';
 const sourceRemote = get('--source-remote') || null;
-const collectionName = get('--collection') || null;
 const explicitNumber = get('--number') ? parseInt(get('--number'), 10) : null;
 
 try {
-  const collectionId = await findCollectionId(collectionName || undefined);
-  const projectId = await findProjectId(collectionId, project);
-  const n = explicitNumber ?? await nextIssueNumber(projectId);
+  const ctx = await resolveContext({ spec, project, collection: get('--collection') || null });
+  const n = explicitNumber ?? await ctx.nextNumber();
   const id = `ISS-${n}`;
   const created = new Date().toISOString().slice(0, 10);
 
+  // In spec mode we render an extra `Spec` row pointing back to the parent.
+  const specUrl = ctx.mode === 'spec' && ctx.specUrl && ctx.specTitle
+    ? `[${ctx.specTitle}](${ctx.specUrl})`
+    : null;
+
+  const projectField = ctx.mode === 'spec' ? ctx.specTitle : ctx.projectName;
+
   const body = buildBody({
     id,
-    project,
+    project: projectField,
     status,
     labels,
     created,
     sourceRemote,
+    specUrl,
     title: shortTitle,
     context,
     acceptance,
@@ -63,24 +87,32 @@ try {
   const res = await run('create.js', [
     `--title=${fullTitle}`,
     `--text=${body}`,
-    `--parent=${projectId}`,
+    `--parent=${ctx.mode === 'spec' ? ctx.specId : ctx.projectId}`,
     '--publish',
   ]);
   const doc = res.data;
 
   if (has('--json')) {
-    console.log(JSON.stringify({ id, projectId, docId: doc.id, url: doc.url, status: 'created' }, null, 2));
+    console.log(JSON.stringify({
+      id,
+      mode: ctx.mode,
+      parentId: ctx.mode === 'spec' ? ctx.specId : ctx.projectId,
+      docId: doc.id,
+      url: doc.url,
+      status: 'created',
+    }, null, 2));
     process.exit(0);
   }
 
   console.log(`✅ Issue ${id} created\n`);
   console.log(`Title:  ${fullTitle}`);
   console.log(`Status: ${status}`);
+  console.log(`Mode:   ${ctx.mode}${ctx.mode === 'spec' ? ` (spec: ${ctx.specTitle})` : ` (project: ${ctx.projectName})`}`);
   console.log(`URL:    ${doc.url || 'N/A'}`);
   console.log(`\nNext steps:`);
-  console.log(`  • bun scripts/set-status.js --issue ${n} --status <new>`);
-  console.log(`  • bun scripts/log-progress.js --issue ${n} --type progress --text "..."`);
-  console.log(`  • bun scripts/close-issue.js --issue ${n} --status done --summary "..."`);
+  console.log(`  • bun scripts/set-status.js --${ctx.mode === 'spec' ? `spec ${ctx.specId}` : `project ${ctx.projectName}`} --issue ${n} --status <new>`);
+  console.log(`  • bun scripts/log-progress.js --${ctx.mode === 'spec' ? `spec ${ctx.specId}` : `project ${ctx.projectName}`} --issue ${n} --type progress --text "..."`);
+  console.log(`  • bun scripts/close-issue.js --${ctx.mode === 'spec' ? `spec ${ctx.specId}` : `project ${ctx.projectName}`} --issue ${n} --status done --summary "..."`);
 } catch (e) {
   console.error(`❌ ${e.message}`);
   process.exit(1);
@@ -92,31 +124,36 @@ function parseList(v) {
 }
 
 function printHelp() {
-  console.log(`Usage: new-issue.js --project <name> --title <text> [options]
+  console.log(`Usage: new-issue.js (--project <name> | --spec <docId>) --title <text> [options]
 
-Required:
-  --project <name>       Project document name (e.g. "fsk-shop")
-  --title <text>         Issue title; "ISS-<n>:" prefix is added automatically
-                         unless --number is also passed.
+Required (one of):
+  --project <name>       Project document name (e.g. "fsk-shop"); legacy
+                          collection-rooted mode.
+  --spec <docId>         Outline document id of the parent spec; the issue
+                          becomes a direct child of that spec. The spec can
+                          live in any collection.
 
 Options:
+  --title <text>         Issue title; "ISS-<n>:" prefix is added automatically
+                          unless --number is also passed.
   --status <label>       Triage label (default: ready-for-agent).
-                         Allowed: needs-triage, needs-info, ready-for-agent,
-                         ready-for-human, wontfix, done.
+                          Allowed: needs-triage, needs-info, ready-for-agent,
+                          ready-for-human, wontfix, done.
   --label <a,b,c>        Comma-separated domain labels.
   --acceptance <a,b,c>   Comma-separated acceptance criteria.
   --context <text>       Body of the "## Context" section.
   --source-remote <url>  Source remote for the metadata table.
-  --collection <name>    Tracker collection name (default from config).
+  --collection <name>    Tracker collection name (legacy --project mode only).
   --number <N>           Use a specific ISS-N (skips auto-increment).
   --json                 Print machine-readable JSON instead of human output.
 
-Examples:
+Examples (spec mode):
+  bun scripts/new-issue.js --spec LtsW8BKXZf \\
+    --title "OpenAI/ChatGPT on mobile network (unresolved)" \\
+    --status ready-for-agent --label mobile,openai
+
+Examples (project mode):
   bun scripts/new-issue.js --project fsk-shop \\
     --title "Phase 16 — refund_reversal" \\
-    --context "..." --label phase,loyalty
-
-  bun scripts/new-issue.js --project fsk-shop \\
-    --title "Bug: checkout crashes on empty cart" \\
-    --status needs-triage --label bug`);
+    --context "..." --label phase,loyalty`);
 }

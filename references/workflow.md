@@ -2,7 +2,9 @@
 
 The intended rhythm for using this skill across sessions in a single
 project. Mirrors the pattern that already runs in `fsk-shop` and similar
-single-context repos that track issues on Outline Wiki.
+single-context repos that track issues on Outline Wiki, plus the
+spec-rooted variant used for design / runbook documents whose issues
+should live as direct children of the spec.
 
 ## Lifecycle of a single issue
 
@@ -33,9 +35,18 @@ stateDiagram-v2
 
 1. Read the user's brief carefully. Identify: title, scope, acceptance
    criteria, references (handoff, ROADMAP, SPEC, git state), open questions.
-2. Run `new-issue.js` with `--project`, `--title`, `--context`, `--acceptance`.
-   Default status is `ready-for-agent`.
-3. Print the returned URL at the top of the session output. The user will
+2. Pick the parent mode:
+   - **Spec mode** (`--spec <docId>`) — when the issue belongs to a SPEC /
+     runbook / architecture doc and should live as a child of that doc.
+     Use this for design-tracked work in non-tracker repositories (or when
+     the user wants issues indexed next to the spec rather than in a
+     separate `Issues` collection).
+   - **Project mode** (`--project <name>`) — when working inside a tracker
+     collection (e.g. `fsk-shop`). Project doc is a child of the
+     collection; the issue is a child of the project doc.
+3. Run `new-issue.js` with the chosen mode, plus `--title`, `--context`,
+   `--acceptance`, `--label`. Default status is `ready-for-agent`.
+4. Print the returned URL at the top of the session output. The user will
    reference it for the rest of the session, and the next session will resume
    from it.
 
@@ -45,8 +56,9 @@ order are consistent.
 
 ### 2. During the session — track progress in `## Notes`
 
-- After every meaningful checkpoint, run `log-progress.js --type progress --text "..."`.
-  Entries are timestamped, so chronology is preserved across sessions.
+- After every meaningful checkpoint, run
+  `log-progress.js --type progress --text "..."`. Entries are timestamped,
+  so chronology is preserved across sessions.
 - When a handoff doc, ROADMAP update, SPEC section, or commit lands, log it
   with `--type link --target <kind> --ref <path-or-sha>`. This keeps the
   issue a self-contained index of everything the session produced.
@@ -75,15 +87,38 @@ list the follow-ups via `--followup`. If the work is cancelled, use
 When resuming a previous session, the typical bootstrap is:
 
 ```bash
-# Find the project doc and list its issues.
-bun scripts/list-issues.js --project fsk-shop --status ready-for-agent
+# Spec mode — find the spec and list its issues.
+bun scripts/list-issues.js --spec LtsW8BKXZf --status ready-for-agent
+bun scripts/read-issue.js --spec LtsW8BKXZf --issue 19
 
-# Read the relevant one.
+# Project mode — find the project and list its issues.
+bun scripts/list-issues.js --project fsk-shop --status ready-for-agent
 bun scripts/read-issue.js --project fsk-shop --issue 13
 ```
 
 `list-issues.js` filters by status, so `ready-for-agent` is the natural
 "queue for an AFK agent" view.
+
+## Migrating inline issues out of a spec doc
+
+When a spec or runbook already contains numbered issues as inline text
+(`### 1. <title>`, `### 2. <title>`, …), use
+`examples/migrate-spec-issues.js` to lift each block into a child
+`ISS-<n>:` page:
+
+```bash
+bun examples/migrate-spec-issues.js --spec LtsW8BKXZf \
+  --map examples/migration-maps/vpn-apriori-vm.json
+bun examples/migrate-spec-issues.js --spec LtsW8BKXZf \
+  --map examples/migration-maps/vpn-apriori-vm.json --apply
+```
+
+The script uses the shared `run()` helper to call `outline create.js`
+directly (no subprocess) for each parsed block, building the same body
+that `new-issue.js` would build by importing `buildBody` from
+`lib/issue-template.js`. After all creates it prints a replacement plan
+for the parent spec, which the user applies manually via
+`outline update.js` after review.
 
 ## What this skill does not do
 
@@ -92,8 +127,8 @@ bun scripts/read-issue.js --project fsk-shop --issue 13
   to `done` and only switch on user request.
 - It does not edit or delete existing `## Notes` entries. The tracker
   history is append-only from this skill's perspective.
-- It does not touch issues outside the configured project document. Cross-
-  project work is out of scope — if you need it, run with a different
-  `--project` and `--collection` per call.
+- It does not touch issues outside the configured parent. Cross-parent
+  work is out of scope — if you need it, run with a different `--project`
+  or `--spec` per call.
 - It does not commit, push, or open PRs. The git workflow is a separate
   concern; the issue just records the resulting SHAs in the `Outcome` block.

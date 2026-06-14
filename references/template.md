@@ -5,7 +5,7 @@ The exact body rendered by `new-issue.js` and the one `read-issue.js` /
 The format is fixed — see `docs/agents/issue-tracker.md` in the host repo
 for the canonical source.
 
-## Rendered body
+## Rendered body (project mode)
 
 ```markdown
 | Field         | Value                              |
@@ -33,16 +33,44 @@ for the canonical source.
 _No notes yet._
 ```
 
+## Rendered body (spec mode)
+
+In `--spec` mode, the `Project` row is set to the spec's title and an extra
+`Spec` row is appended with a markdown link to the parent spec:
+
+```markdown
+| Field         | Value                                                  |
+| ------------- | ------------------------------------------------------ |
+| ID            | ISS-<n>                                                |
+| Project       | <spec-title>                                           |
+| Status        | <triage-label>                                         |
+| Labels        | <comma, separated, labels>                             |
+| Created       | <YYYY-MM-DD>                                           |
+| Source remote | <git url, optional>                                    |
+| Spec          | [<spec-title>](https://outline.../doc/<spec-id>)       |
+
+# <Short title>
+
+## Context
+...
+```
+
+`Spec` is rendered only when the issue was created with `--spec`. The
+table-parser (`scripts/lib/table-parser.js`) is unaware of the field; it
+walks rows in document order, so `Spec` is a normal optional row that
+`updateField('Spec', value)` can rewrite in place.
+
 ## Field → script-flag map
 
 | Field         | Sourced from                                                  |
 | ------------- | ------------------------------------------------------------- |
-| `ID`          | Auto-incremented (`nextIssueNumber()`); override with `--number` |
-| `Project`     | `--project <name>` (e.g. `fsk-shop`)                          |
+| `ID`          | Auto-incremented per parent; override with `--number`         |
+| `Project`     | `--project <name>` (legacy), or spec title in `--spec` mode   |
 | `Status`      | `--status <triage-label>` (default `ready-for-agent`)         |
 | `Labels`      | `--label <a,b,c>` (optional, comma-separated)                 |
-| `Created`     | `new Date().toISOString().slice(0, 10)` (YYYY-MM-DD)         |
+| `Created`     | `new Date().toISOString().slice(0, 10)` (YYYY-MM-DD)          |
 | `Source remote` | `--source-remote <git url>` (optional)                      |
+| `Spec`        | Auto-populated in `--spec` mode from the parent spec's title and URL |
 
 The `## Context`, `## Acceptance criteria`, and `## Notes` sections are
 driven by the corresponding `--context`, `--acceptance`, and `--notes` flags

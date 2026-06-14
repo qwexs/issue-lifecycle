@@ -29,7 +29,7 @@ machine-portable settings).
 
 | Field             | Default                                      | Purpose                                                                                |
 | ----------------- | -------------------------------------------- | -------------------------------------------------------------------------------------- |
-| `collectionName`  | `"Issues"`                                   | Name of the Outline collection that holds the project document.                        |
+| `collectionName`  | `"Issues"`                                   | Name of the Outline collection that holds the project document (legacy mode).         |
 | `outlineSkillPath` | `~/.agents/skills/outline-skill/scripts`     | Directory with the `outline` skill's `*.js` scripts (this skill shells out to them).   |
 
 ### 3. Built-in defaults
@@ -39,15 +39,33 @@ If neither env var nor user config is set, the skill falls back to:
 - collection: `Issues`
 - outline skill scripts: `~/.agents/skills/outline-skill/scripts`
 
-Both can be overridden on a per-call basis via `--collection <name>`.
+The collection default can be overridden on a per-call basis via
+`--collection <name>`. It only matters in `--project` mode; `--spec` mode
+does not consult the collection at all.
+
+## Parent modes
+
+Every script accepts one of two mutually exclusive parent arguments:
+
+| Argument          | Mode        | Use case                                                                |
+| ----------------- | ----------- | ----------------------------------------------------------------------- |
+| `--project <name>` | project     | Issues live under a tracker project doc inside a collection (e.g. `fsk-shop`). |
+| `--spec <docId>`   | spec        | Issues live as direct children of an arbitrary Outline document (typically a SPEC / runbook / architecture page). |
+
+In spec mode, no collection walk is performed: the spec's title and URL
+are read once, and issues are listed/created via
+`list.js --parent=<specId>`. In project mode, the project doc is resolved
+from `tree.js --collection=<id>`.
 
 ## What the skill does NOT need to know
 
-- **Outline API URL** — read by the `outline` skill from its own `config.json`.
-- **API token** — read by the `outline` skill from `OUTLINE_API_TOKEN` (or its
-  own `config.json`). This skill never sees the token; it only shells out to
-  `outline/scripts/<name>.js --json`.
-- **Project document id** — resolved at runtime from `--project <name>`.
+- **Outline API URL** — read by the `outline` skill from its own
+  `config.json`.
+- **API token** — read by the `outline` skill from `OUTLINE_API_TOKEN` (or
+  its own `config.json`). This skill never sees the token; it only shells
+  out to `outline/scripts/<name>.js --json`.
+- **Project / spec document id** — resolved at runtime from
+  `--project <name>` (via the tracker collection) or `--spec <docId>`.
   Cached in-memory for the duration of one script invocation only; never
   persisted.
 - **Issue document ids** — resolved at runtime from `--issue <N>` (the
@@ -64,4 +82,5 @@ Both can be overridden on a per-call basis via `--collection <name>`.
    `collectionName` / `outlineSkillPath` if your project uses different
    names.
 4. Run `bun ~/.agents/skills/issue-lifecycle/scripts/list-issues.js
-   --project <name>` to confirm the resolver chain works end-to-end.
+   --project <name>` (legacy) or `bun scripts/list-issues.js --spec <id>`
+   (spec mode) to confirm the resolver chain works end-to-end.

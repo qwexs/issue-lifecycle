@@ -70,7 +70,13 @@ export async function runText(script, args = []) {
 
 function exec(cmd) {
   return new Promise((resolve, reject) => {
-    const proc = spawn(cmd[0], cmd.slice(1), { stdio: ['ignore', 'pipe', 'pipe'] });
+    // On Windows, spawning a `.js` path directly (without `shell: true` or an
+    // explicit interpreter) hits libuv with EFTYPE: inappropriate file type
+    // or format. We always run the outline skill's scripts under the same
+    // runtime that is executing this file — `process.execPath` is the path to
+    // the current `node`/`bun`/etc. binary.
+    const interpreter = process.execPath;
+    const proc = spawn(interpreter, [cmd[0], ...cmd.slice(1)], { stdio: ['ignore', 'pipe', 'pipe'] });
     let out = '';
     let err = '';
     proc.stdout.on('data', (d) => { out += d.toString(); });
