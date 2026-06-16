@@ -1,6 +1,6 @@
 ---
 name: issue-lifecycle
-description: Manage issues through their full lifecycle on the Outline Wiki tracker — create from a brief, update status, append progress notes, link to handoff/ROADMAP/SPEC/commits, close as done/ready-for-human/wontfix. Use when user wants to publish a new issue from a phase brief, track progress on an existing ISS-N, or close out a phase at end of a session. Supports two parent modes: a project doc inside a tracker collection (legacy), or an arbitrary spec/architecture doc anywhere in the wiki (--spec mode).
+description: "Manage issues through their full lifecycle on the Outline Wiki tracker — create from a brief, update status, append progress notes, link to handoff/ROADMAP/SPEC/commits, close as done/ready-for-human/wontfix. Use when user wants to publish a new issue from a phase brief, track progress on an existing ISS-N, or close out a phase at end of a session. Supports two parent modes: a project doc inside a tracker collection (legacy), or an arbitrary spec/architecture doc anywhere in the wiki (--spec mode)."
 ---
 
 # Issue Lifecycle
